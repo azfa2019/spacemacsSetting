@@ -31,6 +31,7 @@ values."
    ;; List of configuration layers to load.
    dotspacemacs-configuration-layers
    '(
+     windows-scripts
      python
      ;; ----------------------------------------------------------------
      ;; Example of useful layers you may want to use right away.
@@ -78,7 +79,10 @@ values."
    ;; A list of packages that cannot be updated.
    dotspacemacs-frozen-packages '()
    ;; A list of packages that will not be installed and loaded.
-   dotspacemacs-excluded-packages '()
+   dotspacemacs-excluded-packages
+   '(
+     ;;yasnippet
+     )
    ;; Defines the behaviour of Spacemacs when installing packages.
    ;; Possible values are `used-only', `used-but-keep-unused' and `all'.
    ;; `used-only' installs only explicitly used packages and uninstall any
@@ -434,6 +438,7 @@ you should place your code here."
    ;; Use default-directory as last resource
    (t
     (shell-command (concat "start explorer /e,\"" (replace-regexp-in-string "/" "\\\\" default-directory) "\"")))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; packages
 (when (>= emacs-major-version 24)
@@ -491,7 +496,7 @@ you should place your code here."
 ;;(require 'smartparens-config)
 ;;(add-hook 'emacs-lisp-mode-hook 'smartparens-mode)
 ;;(add-hook 'org-mode-hook 'smartparens-mode)
-(smartparens-global-mode t)
+;;(smartparens-global-mode t)
 (ivy-mode 1)
 (setq ivy-use-virtual-buffers t)
 (setq auto-mode-alist
@@ -531,6 +536,92 @@ you should place your code here."
 (setq org-src-fontify-natively t)
 (setq org-agenda-files '("~/org"))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; abaqus mode
+(defvar abaqus-mode-hook nil)
+(defvar abaqus-load-hook nil)
+
+(defvar abaqus-ruler "**..:....1....:....2....:....3....:....4....:....5....:....6....:....7....:....8"
+  "*The ruler `abaqus-insert-ruler' inserts."
+)
+
+(defun abaqus-insert-ruler ()
+  "Insert a ruler with comments."
+  (interactive)
+  (end-of-line)  
+  (insert abaqus-ruler)
+)
+
+(defvar abaqus-font-lock-keywords
+  (list
+   '("^[*][*].*$" . font-lock-comment-face)
+   '("^#.*$" . font-lock-comment-face)
+   '("^\*[a-zA-Z].*[^a-zA-Z]" . font-lock-keyword-face)
+   '("^[ \t]+$" . highlight)
+  )
+)
+(setq my-abaqus-highlights
+  '(
+   ("^[*][*].*$" . font-lock-comment-face)
+   ("^#.*$" . font-lock-comment-face)
+   ("^\*[a-zA-Z].*[^a-zA-Z]" . font-lock-keyword-face)
+   ("^[ \t]+$" . highlight)
+   )
+  ) 
+(define-derived-mode abq-mode fundamental-mode "myabq"
+  "major mode for editing abaqus language code."
+  (setq font-lock-defaults '(my-abaqus-highlights))) 
+
+(defvar abaqus-comment-prefix "*** "
+  "*The comment `abaqus-insert-comment' inserts."
+)
+
+(defun abaqus-comment-region (beg end &optional arg)
+  "Like `comment-region' but uses triple star (`***') comment starter."
+  (interactive "r\nP")
+  (beginning-of-line)
+  (let ((comment-start abaqus-comment-prefix))
+    (comment-region beg end arg)))
+
+
+(defun abaqus-uncomment-region (beg end &optional arg)
+  (interactive "r\nP")
+  (beginning-of-line)
+  (abaqus-comment-region (point) (mark) '(4)) (mark)
+)
+
+
+(defvar abaqus-mode-map ()
+  "Keymap used in `abaqus-mode' buffers.")
+(if abaqus-mode-map
+    nil
+  (setq abaqus-mode-map (make-sparse-keymap))
+  (define-key abaqus-mode-map "\C-c#"     'abaqus-comment-region)
+  (define-key abaqus-mode-map "\C-c~"     'abaqus-uncomment-region)
+)
+
+(defun abaqus-mode ()
+  "Major mode for editing ABAQUS files."
+  (interactive)
+  (setq mode-name "abaqus")
+  (setq major-mode 'abaqus-mode
+    mode-name              "Abaqus"
+    font-lock-defaults     '(my-abaqus-highlights);;'(abaqus-font-lock-keywords)
+    require-final-newline  t
+  )
+  (make-local-variable 'font-lock-defaults)
+  (setq font-lock-defaults '(my-abaqus-highlights);;'(abaqus-font-lock-keywords)
+   )
+  (run-hooks 'abaqus-mode-hook)
+  (use-local-map abaqus-mode-map)
+)
+
+(provide 'abaqus-mode)
+(run-hooks 'abaqus-load-hook)
+
+(add-hook 'abaqus-mode-hook 'turn-on-font-lock)
+(autoload 'abaqus-mode "abaqus" "Enter abaqus mode." t)
+(setq auto-mode-alist (cons '("\\.inp\\'" . abaqus-mode) auto-mode-alist))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; how to use git
 ;; git init
 ;;;; git config --global user.name "azfa"
@@ -553,7 +644,7 @@ you should place your code here."
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (unfill mwim helm-company helm-c-yasnippet fuzzy company-statistics company-anaconda company auto-yasnippet yasnippet ac-ispell auto-complete yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode dash-functional helm-pydoc cython-mode anaconda-mode pythonic ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra lv hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile projectile pkg-info epl helm-mode-manager helm-make helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-args evil-anzu eval-sexp-fu elisp-slime-nav dumb-jump diminish define-word column-enforce-mode clean-aindent-mode bind-key auto-highlight-symbol auto-compile aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line))))
+    (powershell unfill mwim helm-company helm-c-yasnippet fuzzy company-statistics company-anaconda company auto-yasnippet yasnippet ac-ispell auto-complete yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode dash-functional helm-pydoc cython-mode anaconda-mode pythonic ws-butler winum which-key volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint indent-guide hydra lv hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation helm-themes helm-swoop helm-projectile projectile pkg-info epl helm-mode-manager helm-make helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-args evil-anzu eval-sexp-fu elisp-slime-nav dumb-jump diminish define-word column-enforce-mode clean-aindent-mode bind-key auto-highlight-symbol auto-compile aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
